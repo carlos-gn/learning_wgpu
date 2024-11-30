@@ -15,6 +15,8 @@ struct State<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
     window: &'a Window,
 }
 
@@ -142,6 +144,14 @@ impl<'a> State<'a> {
             contents: bytemuck::cast_slice(VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
+
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let num_indices = INDICES.len() as u32;
         let num_vertices = VERTICES.len() as u32;
 
         Self {
@@ -154,6 +164,8 @@ impl<'a> State<'a> {
             render_pipeline,
             vertex_buffer,
             num_vertices,
+            index_buffer,
+            num_indices,
         }
     }
 
@@ -210,6 +222,8 @@ impl<'a> State<'a> {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
             render_pass.draw(0..self.num_vertices, 0..1);
         }
 
@@ -232,85 +246,38 @@ impl Vertex {
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
-        use std::mem;
-        // Thanks to the Rust docs help:
-        // Using #[repr(C)].
-        // use std::mem;
-
-        // #[repr(C)]
-        // struct FieldStruct {
-        //     first: u8,
-        //     second: u16,
-        //     third: u8
-        // }
-
-        // The size of the first field is 1, so add 1 to the size. Size is 1.
-        // The alignment of the second field is 2, so add 1 to the size for padding. Size is 2.
-        // The size of the second field is 2, so add 2 to the size. Size is 4.
-        // The alignment of the third field is 1, so add 0 to the size for padding. Size is 4.
-        // The size of the third field is 1, so add 1 to the size. Size is 5.
-        // Finally, the alignment of the struct is 2 (because the largest alignment amongst its
-        // fields is 2), so add 1 to the size for padding. Size is 6.
-        // assert_eq!(6, mem::size_of::<FieldStruct>());
-        //
-        // I don't understand what is alignment here.
-        // For our struct:
-        // Size of the first field is 4 x 3 = 12.
-        // Size of the second field is 4 x 3 = 12.
-        //
-
-        //
-        // According to this size of Vertex is 12.
-        // Basic explanation of the Vertex
-        //
-        // [1,2,3, 1,2,3] each one is 4bytes.
-        // Position    Color
-        // offset: 0   offset: size of vertex -> 24 bytes.
-        // So the offset
         wgpu::VertexBufferLayout {
-            // Defines how wide the vertex is. [1,2,3,4], if strides is 2. Will skip 2 bytes.
-            // 32 bits * 3, 4 * 3 => 24 bytes per struct? im f making this up lol. I Was right lol!
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            // Just specify if the step is per vertex or per instance of the data
-            // What is instance of the data? no idea.
             step_mode: wgpu::VertexStepMode::Vertex,
-            // // This makes more sense
-            // attributes: &[
-            //     // 0  - Position
-            //     wgpu::VertexAttribute {
-            //         offset: 0,
-            //         shader_location: 0,
-            //         format: wgpu::VertexFormat::Float32x3,
-            //     },
-            //     // 1  - Color
-            //     wgpu::VertexAttribute {
-            //         offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-            //         shader_location: 1,
-            //         format: wgpu::VertexFormat::Float32x3,
-            //     },
-            // ],
             attributes: &Self::ATTRIBS,
         }
     }
 }
 
 const VERTICES: &[Vertex] = &[
-    // Top
     Vertex {
-        position: [0.0, 0.5, 0.0],
-        color: [1.0, 0.0, 0.0],
-    },
-    // Bottom left
+        position: [-0.0868241, 0.49240386, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // A
     Vertex {
-        position: [-0.5, -0.5, 0.0],
-        color: [0.0, 1.0, 0.0],
-    },
-    // Bottom right
+        position: [-0.49513406, 0.06958647, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // B
     Vertex {
-        position: [0.5, -0.5, 0.0],
-        color: [1.0, 0.0, 0.0],
-    },
+        position: [-0.21918549, -0.44939706, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // C
+    Vertex {
+        position: [0.35966998, -0.3473291, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // D
+    Vertex {
+        position: [0.44147372, 0.2347359, 0.0],
+        color: [0.5, 0.0, 0.5],
+    }, // E
 ];
+
+const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
 pub async fn run() {
     env_logger::init();
